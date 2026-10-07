@@ -2,6 +2,8 @@
 
 Proyecto Integrador de **Minería de Datos II** — ISTEA.
 
+**Integrante:** Nicolás Granata
+
 ## Objetivo
 
 El proyecto representa al área de datos de un proveedor de servicios cloud.
