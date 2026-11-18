@@ -1,0 +1,37 @@
+{
+  "spark_version": "4.0.4",
+  "sources": {
+    "csv_files": 7,
+    "jsonl_files": 120
+  },
+  "batch_bronze": {
+    "customers": 80,
+    "users": 800,
+    "billing": 240
+  },
+  "streaming_bronze": {
+    "events": 43200,
+    "watermark_minutes": 86400
+  },
+  "quality": {
+    "quarantine_rows": 2038
+  },
+  "silver": {
+    "events": 41162,
+    "customers": 80
+  },
+  "gold": {
+    "rows": 11050,
+    "duplicate_keys": 0
+  },
+  "idempotence": {
+    "batch_same_count": true,
+    "stream_same_count": true,
+    "controlled_dedupe_ok": true,
+    "astra_upsert_same_count": true
+  },
+  "astra": {
+    "connection_completed": true,
+    "upsert_test_completed": true
+  }
+}
