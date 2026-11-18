@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cloud Provider Analytics — Arquitectura v2 implementada</title>
+<style>
+body{margin:0;background:#f5f7fa;font-family:Arial,Segoe UI,sans-serif;color:#17212b}
+.page{width:min(1500px,96vw);margin:24px auto;background:white;border:1px solid #e4e9ee;border-radius:18px;box-shadow:0 10px 28px rgba(31,41,55,.10);overflow:hidden}
+header{padding:28px 36px 22px;border-bottom:1px solid #e7ebef}
+h1{margin:0 0 8px;font-size:30px}
+.subtitle{color:#5d6b78;font-size:15px}
+.wrap{padding:18px}
+svg{width:100%;height:auto;display:block}
+.section-title{font-size:17px;font-weight:700;fill:#1f2937}
+.node-title{font-size:17px;font-weight:700;fill:#17212b}
+.node-text{font-size:13px;fill:#334155}
+.small{font-size:12px;fill:#475569}
+.count{font-size:13px;font-weight:700;fill:#17212b}
+.arrow{stroke:#64748b;stroke-width:2.2;fill:none;marker-end:url(#arrow)}
+.node{stroke-width:1.5;rx:16;ry:16}
+.source{fill:#edf5f9;stroke:#8bb8ce}
+.process{fill:#eef4fb;stroke:#8aa9c8}
+.lake{fill:#edf5e8;stroke:#9ebf86}
+.quality{fill:#fff5dc;stroke:#d9b46d}
+.quarantine{fill:#f9e7e7;stroke:#d59595}
+.serving{fill:#efe9f8;stroke:#b7a2d8}
+.meta{fill:#f4f6f8;stroke:#b8c1ca}
+footer{padding:16px 32px 24px;color:#6b7280;font-size:12px;border-top:1px solid #edf0f2}
+</style>
+</head>
+<body>
+<div class="page">
+<header>
+<h1>Cloud Provider Analytics — Arquitectura v2 implementada</h1>
+<div class="subtitle">Evaluación 2 · Pipeline ejecutado en Google Colab con PySpark 4.0.4 y serving en DataStax AstraDB</div>
+</header>
+<div class="wrap">
+<svg viewBox="0 0 1460 1770" role="img" aria-label="Arquitectura v2 Cloud Provider Analytics">
+<defs>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3.5" orient="auto" markerUnits="strokeWidth">
+<path d="M0,0 L8,3.5 L0,7 z" fill="#64748b"/>
+</marker>
+</defs>
+
+<text x="60" y="55" class="section-title">1. Fuentes</text>
+
+<rect x="70" y="85" width="555" height="175" class="node source"/>
+<text x="95" y="120" class="node-title">Fuentes batch (CSV)</text>
+<text x="95" y="152" class="node-text">customers_orgs.csv · users.csv · billing_monthly.csv</text>
+<text x="95" y="181" class="node-text">Procesadas en E2 como maestros / fuente periódica</text>
+<text x="95" y="217" class="count">7 CSV disponibles en Landing</text>
+
+<rect x="835" y="85" width="555" height="175" class="node source"/>
+<text x="860" y="120" class="node-title">Eventos de uso (JSONL)</text>
+<text x="860" y="152" class="node-text">usage_events_stream/*.jsonl</text>
+<text x="860" y="181" class="node-text">Micro-lotes simulados para Structured Streaming</text>
+<text x="860" y="217" class="count">120 archivos · 43.200 eventos</text>
+
+<path d="M347 260 L347 315 L730 315 L730 355" class="arrow"/>
+<path d="M1112 260 L1112 315 L730 315" class="arrow"/>
+
+<text x="60" y="360" class="section-title">2. Ingesta y Landing</text>
+<rect x="490" y="385" width="480" height="125" class="node lake"/>
+<text x="730" y="422" text-anchor="middle" class="node-title">LANDING · Raw inmutable</text>
+<text x="730" y="452" text-anchor="middle" class="node-text">Archivos originales provistos por la cátedra</text>
+<text x="730" y="480" text-anchor="middle" class="small">No se modifican durante el pipeline</text>
+
+<path d="M730 510 L730 560 L355 560 L355 600" class="arrow"/>
+<path d="M730 560 L1105 560 L1105 600" class="arrow"/>
+
+<rect x="90" y="600" width="530" height="230" class="node process"/>
+<text x="355" y="640" text-anchor="middle" class="node-title">PySpark Batch → Bronze</text>
+<text x="125" y="678" class="node-text">• Esquema explícito</text>
+<text x="125" y="706" class="node-text">• Tipificación controlada</text>
+<text x="125" y="734" class="node-text">• source_file + ingest_ts</text>
+<text x="125" y="762" class="node-text">• Dedupe por clave natural</text>
+<text x="125" y="800" class="count">80 customers · 800 users · 240 billing</text>
+
+<rect x="840" y="600" width="530" height="230" class="node process"/>
+<text x="1105" y="640" text-anchor="middle" class="node-title">Structured Streaming → Bronze</text>
+<text x="875" y="678" class="node-text">• Esquema explícito</text>
+<text x="875" y="706" class="node-text">• Watermark: 86.400 min (60 días)</text>
+<text x="875" y="734" class="node-text">• Dedupe por event_id</text>
+<text x="875" y="762" class="node-text">• Checkpoint por query</text>
+<text x="875" y="800" class="count">43.200 eventos · 0 descartados por watermark</text>
+
+<path d="M355 830 L355 890 L730 890 L730 930" class="arrow"/>
+<path d="M1105 830 L1105 890 L730 890" class="arrow"/>
+
+<text x="60" y="935" class="section-title">3. Data Lake</text>
+<rect x="490" y="960" width="480" height="125" class="node lake"/>
+<text x="730" y="1000" text-anchor="middle" class="node-title">BRONZE · Parquet</text>
+<text x="730" y="1030" text-anchor="middle" class="node-text">Raw estándar + metadata técnica + deduplicación</text>
+<text x="730" y="1057" text-anchor="middle" class="small">Mismo grano de la fuente</text>
+
+<path d="M730 1085 L730 1140" class="arrow"/>
+
+<rect x="430" y="1140" width="600" height="190" class="node quality"/>
+<text x="730" y="1180" text-anchor="middle" class="node-title">SILVER · Conformado</text>
+<text x="475" y="1217" class="node-text">• Normalización y casting controlado</text>
+<text x="475" y="1245" class="node-text">• Reglas de calidad y flags</text>
+<text x="475" y="1273" class="node-text">• Features: costo, requests, GenAI, carbono</text>
+<text x="475" y="1301" class="count">41.162 eventos promovidos · 80 customers</text>
+
+<path d="M430 1230 L275 1230 L275 1355" class="arrow"/>
+<rect x="70" y="1355" width="410" height="135" class="node quarantine"/>
+<text x="275" y="1393" text-anchor="middle" class="node-title">QUARANTINE · Parquet</text>
+<text x="275" y="1423" text-anchor="middle" class="node-text">Registros que no superan reglas de promoción</text>
+<text x="275" y="1453" text-anchor="middle" class="count">2.038 registros + quality_reason</text>
+
+<path d="M730 1330 L730 1380" class="arrow"/>
+<rect x="535" y="1380" width="390" height="135" class="node lake"/>
+<text x="730" y="1418" text-anchor="middle" class="node-title">GOLD · Mart FinOps</text>
+<text x="730" y="1448" text-anchor="middle" class="node-text">org_daily_usage_by_service</text>
+<text x="730" y="1477" text-anchor="middle" class="count">11.050 filas · 0 claves duplicadas</text>
+
+<rect x="70" y="1540" width="760" height="120" class="node meta"/>
+<text x="450" y="1577" text-anchor="middle" class="node-title">Capacidades transversales</text>
+<text x="450" y="1610" text-anchor="middle" class="node-text">Metadata · Linaje · Calidad · Idempotencia · Seguridad</text>
+<text x="450" y="1638" text-anchor="middle" class="small">source_file · ingest_ts · checkpoints · upserts · credenciales fuera de GitHub</text>
+
+<path d="M925 1448 L1110 1448 L1110 1515" class="arrow"/>
+<rect x="960" y="1515" width="430" height="145" class="node serving"/>
+<text x="1175" y="1553" text-anchor="middle" class="node-title">DataStax AstraDB</text>
+<text x="1175" y="1583" text-anchor="middle" class="node-text">Keyspace: cloud_provider_analytics</text>
+<text x="1175" y="1611" text-anchor="middle" class="node-text">Tabla query-first: org_daily_usage_by_service</text>
+<text x="1175" y="1639" text-anchor="middle" class="count">11.050 upserts</text>
+
+<path d="M1175 1660 L1175 1668" class="arrow"/>
+<rect x="960" y="1668" width="430" height="82" class="node serving"/>
+<text x="1175" y="1700" text-anchor="middle" class="node-title">Consultas CQL</text>
+<text x="1175" y="1727" text-anchor="middle" class="small">Rango temporal: 60 filas · Últimos registros: 10 filas</text>
+</svg>
+</div>
+<footer>
+Arquitectura v2 — representación de los componentes efectivamente implementados en la Evaluación 2.
+No incluye componentes aspiracionales como Kafka, Airflow o herramientas BI.
+</footer>
+</div>
+</body>
+</html>
